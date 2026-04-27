@@ -17,6 +17,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-04-27T19:47:03.806Z",
+          "status": "online",
+          "responseTime": 725,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -99,8 +107,20 @@
           }
         }
       ]
+    },
+    "random-gif-api": {
+      "checks": [
+        {
+          "timestamp": "2026-04-27T19:47:03.806Z",
+          "status": "online",
+          "responseTime": 697,
+          "details": {
+            "statusCode": 200
+          }
+        }
+      ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-04-27T19:06:29.030Z"
+  "lastUpdated": "2026-04-27T19:47:03.806Z"
 }
