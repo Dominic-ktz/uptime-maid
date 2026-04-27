@@ -3,9 +3,9 @@
 # ─────────────────────────────────────────────
 
 site:
-  title: "Minimaid"
-  description: "Serverless Status Monitor"
-  url: "https://your-user.github.io/MiniMaid"
+  title: "Kisara Services"
+  description: "Serverless Status Monitor by Kisara Group"
+  url: "https://dominic-ktz.github.io/uptime-maid"
 
 theme:
   accent: "#ff2d95"        # Cyberpunk-Pink (Hauptfarbe)
@@ -17,38 +17,20 @@ theme:
 
 services:
   - id: "main-website"
-    name: "Hauptwebsite"
+    name: "Kisara-de"
     type: "http"
-    url: "https://example.com"
+    url: "https://kisara.de"
     expectedStatus: 200
 
-  - id: "api"
-    name: "REST API"
+  - id: "random-gif-api"
+    name: "Random GIF API"
     type: "http"
-    url: "https://api.example.com/health"
+    url: "https://kisara.de"
     expectedStatus: 200
-
-  - id: "mc-java"
-    name: "Minecraft (Java)"
-    type: "minecraft-java"
-    host: "mc.example.com"
-    port: 25565
-
-  - id: "mc-bedrock"
-    name: "Minecraft (Bedrock)"
-    type: "minecraft-bedrock"
-    host: "mc.example.com"
-    port: 19132
-
-  - id: "fivem"
-    name: "FiveM Roleplay"
-    type: "fivem"
-    host: "fivem.example.com"
-    port: 30120
 
 notifications:
   discord:
-    enabled: true
+    enabled: false
     # Setze DISCORD_WEBHOOK_URL als GitHub Secret
     webhook_url: "${DISCORD_WEBHOOK_URL}"
     username: "Minimaid"
