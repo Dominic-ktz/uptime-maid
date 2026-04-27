@@ -1,0 +1,16 @@
+{
+  "name": "minimaid",
+  "version": "1.0.0",
+  "description": "Serverless status monitor with neon cyberpunk UI – powered by GitHub Actions",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node worker/index.js",
+    "incident": "node worker/incident-cli.js",
+    "dev": "npx serve . -p 3000"
+  },
+  "dependencies": {
+    "gamedig": "^5.1.0",
+    "js-yaml": "^4.1.0"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "services": {
+    "main-website": {
+      "checks": [
+        {
+          "timestamp": "2026-04-27T19:06:12.289Z",
+          "status": "online",
+          "responseTime": 132,
+          "details": {
+            "statusCode": 200
+          }
+        },
+        {
+          "timestamp": "2026-04-27T19:06:29.030Z",
+          "status": "online",
+          "responseTime": 1303,
+          "details": {
+            "statusCode": 200
+          }
+        }
+      ]
+    },
+    "api": {
+      "checks": [
+        {
+          "timestamp": "2026-04-27T19:06:12.289Z",
+          "status": "offline",
+          "responseTime": 67,
+          "details": {
+            "error": "fetch failed"
+          }
+        },
+        {
+          "timestamp": "2026-04-27T19:06:29.030Z",
+          "status": "offline",
+          "responseTime": 61,
+          "details": {
+            "error": "fetch failed"
+          }
+        }
+      ]
+    },
+    "mc-java": {
+      "checks": [
+        {
+          "timestamp": "2026-04-27T19:06:12.289Z",
+          "status": "offline",
+          "responseTime": 85,
+          "details": {
+            "error": "Failed all 2 attempts"
+          }
+        },
+        {
+          "timestamp": "2026-04-27T19:06:29.030Z",
+          "status": "offline",
+          "responseTime": 33,
+          "details": {
+            "error": "Failed all 2 attempts"
+          }
+        }
+      ]
+    },
+    "mc-bedrock": {
+      "checks": [
+        {
+          "timestamp": "2026-04-27T19:06:12.289Z",
+          "status": "offline",
+          "responseTime": 1,
+          "details": {
+            "error": "Invalid game: minecraftbe"
+          }
+        },
+        {
+          "timestamp": "2026-04-27T19:06:29.030Z",
+          "status": "offline",
+          "responseTime": 0,
+          "details": {
+            "error": "Invalid game: minecraftbe"
+          }
+        }
+      ]
+    },
+    "fivem": {
+      "checks": [
+        {
+          "timestamp": "2026-04-27T19:06:12.289Z",
+          "status": "offline",
+          "responseTime": 46,
+          "details": {
+            "error": "Invalid game: fivem"
+          }
+        },
+        {
+          "timestamp": "2026-04-27T19:06:29.030Z",
+          "status": "offline",
+          "responseTime": 12,
+          "details": {
+            "error": "Invalid game: fivem"
+          }
+        }
+      ]
+    }
+  },
+  "incidents": [],
+  "lastUpdated": "2026-04-27T19:06:29.030Z"
+}

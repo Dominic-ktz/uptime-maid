@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minimaid – Status Monitor</title>
+  <meta name="description" content="Minimaid – Serverless Status Monitor mit Neon-Cyberpunk UI" />
+  <meta name="theme-color" content="#07070e" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            neon: {
+              pink: '#ff2d95',
+              blue: '#00d4ff',
+              green: '#39ff14',
+              red: '#ff073a',
+              yellow: '#ffbe0b',
+              bg: '#07070e',
+              surface: '#0d0d1a',
+              card: '#111128',
+              border: '#1a1a3e',
+            }
+          },
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'Fira Code', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="bg-neon-bg text-gray-200 font-[Inter] min-h-screen antialiased">
+
+  <!-- ═══════ HEADER ═══════ -->
+  <header class="relative overflow-hidden border-b border-neon-border/50">
+    <div class="absolute inset-0 bg-gradient-to-b from-neon-pink/5 via-transparent to-transparent"></div>
+    <div class="relative max-w-6xl mx-auto px-4 py-8 sm:py-12 text-center">
+      <h1 class="neon-title text-5xl sm:text-7xl font-black tracking-tight select-none">
+        Minimaid
+      </h1>
+      <p class="mt-3 text-gray-400 text-sm sm:text-base tracking-wide">
+        Serverless Status Monitor
+      </p>
+      <div id="last-updated" class="mt-4 text-xs text-gray-500 font-mono"></div>
+    </div>
+  </header>
+
+  <!-- ═══════ OVERALL STATUS BANNER ═══════ -->
+  <section id="overall-banner" class="max-w-6xl mx-auto px-4 mt-8">
+    <div id="overall-status" class="rounded-xl p-4 text-center font-semibold text-lg transition-all duration-500 border"
+         style="display:none;">
+    </div>
+  </section>
+
+  <!-- ═══════ SERVICE CARDS ═══════ -->
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- Wird dynamisch befüllt -->
+    </div>
+
+    <div id="loading-state" class="text-center py-20">
+      <div class="inline-block w-8 h-8 border-2 border-neon-pink/30 border-t-neon-pink rounded-full animate-spin"></div>
+      <p class="mt-4 text-gray-500 text-sm">Lade Status-Daten...</p>
+    </div>
+
+    <div id="empty-state" class="text-center py-20 hidden">
+      <div class="text-4xl mb-4">🧹</div>
+      <p class="text-gray-400">Noch keine Status-Daten vorhanden.</p>
+      <p class="text-gray-500 text-sm mt-2">Der Minimaid-Worker muss zuerst ausgeführt werden.</p>
+    </div>
+  </main>
+
+  <!-- ═══════ CHARTS SECTION ═══════ -->
+  <section class="max-w-6xl mx-auto px-4 pb-8" id="charts-section" style="display:none;">
+    <div class="bg-neon-surface border border-neon-border/50 rounded-2xl p-6 shadow-lg shadow-black/20">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <span class="text-neon-blue">⬡</span> Uptime & Antwortzeiten
+        </h2>
+        <div class="flex gap-2 flex-wrap">
+          <select id="chart-service-select" class="chart-select">
+            <option value="__all__">Alle Services</option>
+          </select>
+          <div class="flex bg-neon-card rounded-lg border border-neon-border/50 overflow-hidden">
+            <button class="chart-range-btn active" data-range="24h">24h</button>
+            <button class="chart-range-btn" data-range="7d">7 Tage</button>
+            <button class="chart-range-btn" data-range="30d">30 Tage</button>
+            <button class="chart-range-btn" data-range="90d">90 Tage</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-neon-card/50 rounded-xl p-4 border border-neon-border/30">
+          <h3 class="text-sm font-medium text-gray-400 mb-3">Uptime-Verlauf</h3>
+          <div class="relative h-64">
+            <canvas id="uptime-chart"></canvas>
+          </div>
+        </div>
+        <div class="bg-neon-card/50 rounded-xl p-4 border border-neon-border/30">
+          <h3 class="text-sm font-medium text-gray-400 mb-3">Antwortzeiten (ms)</h3>
+          <div class="relative h-64">
+            <canvas id="response-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ INCIDENTS ═══════ -->
+  <section class="max-w-6xl mx-auto px-4 pb-16" id="incidents-section" style="display:none;">
+    <div class="bg-neon-surface border border-neon-border/50 rounded-2xl p-6 shadow-lg shadow-black/20">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2 mb-6">
+        <span class="text-neon-yellow">⚡</span> Vorfälle & Updates
+      </h2>
+      <div id="incidents-list" class="space-y-3">
+        <!-- Wird dynamisch befüllt -->
+      </div>
+      <div id="no-incidents" class="text-center py-8 text-gray-500 hidden">
+        <p>Keine Vorfälle – alles läuft reibungslos! ✨</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ FOOTER ═══════ -->
+  <footer class="border-t border-neon-border/30 py-8 text-center text-gray-600 text-xs">
+    <p>Powered by <span class="text-neon-pink font-semibold">Minimaid</span> – Serverless Status Monitor</p>
+    <p class="mt-1">Checks laufen via GitHub Actions &middot; Gehostet auf GitHub Pages</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

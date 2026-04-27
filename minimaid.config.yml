@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────
+#  Minimaid – Konfiguration
+# ─────────────────────────────────────────────
+
+site:
+  title: "Minimaid"
+  description: "Serverless Status Monitor"
+  url: "https://your-user.github.io/MiniMaid"
+
+theme:
+  accent: "#ff2d95"        # Cyberpunk-Pink (Hauptfarbe)
+  secondary: "#00d4ff"     # Neon-Blau
+  success: "#39ff14"       # Giftgrün (Online)
+  danger: "#ff073a"        # Neon-Rot (Offline)
+  warning: "#ffbe0b"       # Neon-Gelb (Degraded)
+  background: "#07070e"    # Hintergrund
+
+services:
+  - id: "main-website"
+    name: "Hauptwebsite"
+    type: "http"
+    url: "https://example.com"
+    expectedStatus: 200
+
+  - id: "api"
+    name: "REST API"
+    type: "http"
+    url: "https://api.example.com/health"
+    expectedStatus: 200
+
+  - id: "mc-java"
+    name: "Minecraft (Java)"
+    type: "minecraft-java"
+    host: "mc.example.com"
+    port: 25565
+
+  - id: "mc-bedrock"
+    name: "Minecraft (Bedrock)"
+    type: "minecraft-bedrock"
+    host: "mc.example.com"
+    port: 19132
+
+  - id: "fivem"
+    name: "FiveM Roleplay"
+    type: "fivem"
+    host: "fivem.example.com"
+    port: 30120
+
+notifications:
+  discord:
+    enabled: true
+    # Setze DISCORD_WEBHOOK_URL als GitHub Secret
+    webhook_url: "${DISCORD_WEBHOOK_URL}"
+    username: "Minimaid"
+    avatar_url: ""
+
+settings:
+  check_timeout: 10000     # Timeout pro Check in ms
+  history_max_days: 90     # Wie lange History aufbewahren
+  checks_per_day: 288      # 24h / 5min = 288 Checks pro Tag
