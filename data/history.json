@@ -105,6 +105,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-04-28T13:09:58.236Z",
+          "status": "online",
+          "responseTime": 472,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -277,10 +285,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-04-28T13:09:58.236Z",
+          "status": "online",
+          "responseTime": 451,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-04-28T11:24:50.372Z"
+  "lastUpdated": "2026-04-28T13:09:58.236Z"
 }
