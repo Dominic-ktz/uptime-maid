@@ -4585,6 +4585,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-06-13T13:08:25.005Z",
+          "status": "online",
+          "responseTime": 556,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -9237,10 +9245,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-06-13T13:08:25.005Z",
+          "status": "online",
+          "responseTime": 520,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-06-13T11:30:26.365Z"
+  "lastUpdated": "2026-06-13T13:08:25.005Z"
 }
