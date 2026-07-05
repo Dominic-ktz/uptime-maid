@@ -6473,6 +6473,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-07-05T17:38:28.300Z",
+          "status": "online",
+          "responseTime": 410,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -13013,10 +13021,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-07-05T17:38:28.300Z",
+          "status": "online",
+          "responseTime": 386,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-07-05T16:30:21.944Z"
+  "lastUpdated": "2026-07-05T17:38:28.300Z"
 }
