@@ -3,22 +3,6 @@
     "main-website": {
       "checks": [
         {
-          "timestamp": "2026-04-27T19:06:12.289Z",
-          "status": "online",
-          "responseTime": 132,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-04-27T19:06:29.030Z",
-          "status": "online",
-          "responseTime": 1303,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
           "timestamp": "2026-04-27T19:47:03.806Z",
           "status": "online",
           "responseTime": 725,
@@ -8881,88 +8865,28 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-07-26T19:31:26.440Z",
+          "status": "online",
+          "responseTime": 646,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
     "api": {
-      "checks": [
-        {
-          "timestamp": "2026-04-27T19:06:12.289Z",
-          "status": "offline",
-          "responseTime": 67,
-          "details": {
-            "error": "fetch failed"
-          }
-        },
-        {
-          "timestamp": "2026-04-27T19:06:29.030Z",
-          "status": "offline",
-          "responseTime": 61,
-          "details": {
-            "error": "fetch failed"
-          }
-        }
-      ]
+      "checks": []
     },
     "mc-java": {
-      "checks": [
-        {
-          "timestamp": "2026-04-27T19:06:12.289Z",
-          "status": "offline",
-          "responseTime": 85,
-          "details": {
-            "error": "Failed all 2 attempts"
-          }
-        },
-        {
-          "timestamp": "2026-04-27T19:06:29.030Z",
-          "status": "offline",
-          "responseTime": 33,
-          "details": {
-            "error": "Failed all 2 attempts"
-          }
-        }
-      ]
+      "checks": []
     },
     "mc-bedrock": {
-      "checks": [
-        {
-          "timestamp": "2026-04-27T19:06:12.289Z",
-          "status": "offline",
-          "responseTime": 1,
-          "details": {
-            "error": "Invalid game: minecraftbe"
-          }
-        },
-        {
-          "timestamp": "2026-04-27T19:06:29.030Z",
-          "status": "offline",
-          "responseTime": 0,
-          "details": {
-            "error": "Invalid game: minecraftbe"
-          }
-        }
-      ]
+      "checks": []
     },
     "fivem": {
-      "checks": [
-        {
-          "timestamp": "2026-04-27T19:06:12.289Z",
-          "status": "offline",
-          "responseTime": 46,
-          "details": {
-            "error": "Invalid game: fivem"
-          }
-        },
-        {
-          "timestamp": "2026-04-27T19:06:29.030Z",
-          "status": "offline",
-          "responseTime": 12,
-          "details": {
-            "error": "Invalid game: fivem"
-          }
-        }
-      ]
+      "checks": []
     },
     "random-gif-api": {
       "checks": [
@@ -17829,10 +17753,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-07-26T19:31:26.440Z",
+          "status": "online",
+          "responseTime": 605,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-07-26T18:06:01.320Z"
+  "lastUpdated": "2026-07-26T19:31:26.440Z"
 }
