@@ -12049,6 +12049,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-08-24T13:59:21.154Z",
+          "status": "online",
+          "responseTime": 497,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -24113,10 +24121,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-08-24T13:59:21.154Z",
+          "status": "online",
+          "responseTime": 403,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-08-24T13:07:31.487Z"
+  "lastUpdated": "2026-08-24T13:59:21.154Z"
 }
