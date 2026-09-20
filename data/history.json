@@ -3,14 +3,6 @@
     "main-website": {
       "checks": [
         {
-          "timestamp": "2026-06-22T03:40:49.964Z",
-          "status": "online",
-          "responseTime": 509,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
           "timestamp": "2026-06-22T09:33:21.008Z",
           "status": "online",
           "responseTime": 356,
@@ -11953,6 +11945,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-09-20T05:15:53.553Z",
+          "status": "online",
+          "responseTime": 527,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -11970,14 +11970,6 @@
     },
     "random-gif-api": {
       "checks": [
-        {
-          "timestamp": "2026-06-22T03:40:49.964Z",
-          "status": "online",
-          "responseTime": 627,
-          "details": {
-            "statusCode": 200
-          }
-        },
         {
           "timestamp": "2026-06-22T09:33:21.008Z",
           "status": "online",
@@ -23921,10 +23913,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-09-20T05:15:53.553Z",
+          "status": "online",
+          "responseTime": 457,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-09-20T00:28:52.249Z"
+  "lastUpdated": "2026-09-20T05:15:53.553Z"
 }
