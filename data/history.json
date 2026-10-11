@@ -3,30 +3,6 @@
     "main-website": {
       "checks": [
         {
-          "timestamp": "2026-07-12T22:06:14.549Z",
-          "status": "online",
-          "responseTime": 539,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-07-12T23:04:55.898Z",
-          "status": "online",
-          "responseTime": 463,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-07-13T00:05:52.251Z",
-          "status": "online",
-          "responseTime": 559,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
           "timestamp": "2026-07-13T03:52:46.111Z",
           "status": "online",
           "responseTime": 620,
@@ -10857,6 +10833,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-10-11T00:53:43.990Z",
+          "status": "online",
+          "responseTime": 456,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -10874,30 +10858,6 @@
     },
     "random-gif-api": {
       "checks": [
-        {
-          "timestamp": "2026-07-12T22:06:14.549Z",
-          "status": "online",
-          "responseTime": 286,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-07-12T23:04:55.898Z",
-          "status": "online",
-          "responseTime": 402,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-07-13T00:05:52.251Z",
-          "status": "online",
-          "responseTime": 470,
-          "details": {
-            "statusCode": 200
-          }
-        },
         {
           "timestamp": "2026-07-13T03:52:46.111Z",
           "status": "online",
@@ -21729,10 +21689,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-10-11T00:53:43.990Z",
+          "status": "online",
+          "responseTime": 357,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-10-10T22:04:02.047Z"
+  "lastUpdated": "2026-10-11T00:53:43.990Z"
 }
