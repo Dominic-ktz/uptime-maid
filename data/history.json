@@ -3,62 +3,6 @@
     "main-website": {
       "checks": [
         {
-          "timestamp": "2026-08-13T11:05:39.762Z",
-          "status": "online",
-          "responseTime": 388,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T11:55:29.759Z",
-          "status": "online",
-          "responseTime": 507,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T13:00:20.360Z",
-          "status": "online",
-          "responseTime": 643,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T14:24:35.291Z",
-          "status": "online",
-          "responseTime": 429,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T15:29:10.929Z",
-          "status": "online",
-          "responseTime": 514,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T16:26:26.117Z",
-          "status": "online",
-          "responseTime": 432,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T17:28:04.697Z",
-          "status": "online",
-          "responseTime": 623,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
           "timestamp": "2026-08-13T18:27:31.073Z",
           "status": "online",
           "responseTime": 354,
@@ -7985,6 +7929,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-11-11T17:58:04.924Z",
+          "status": "online",
+          "responseTime": 497,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -8002,62 +7954,6 @@
     },
     "random-gif-api": {
       "checks": [
-        {
-          "timestamp": "2026-08-13T11:05:39.762Z",
-          "status": "online",
-          "responseTime": 340,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T11:55:29.759Z",
-          "status": "online",
-          "responseTime": 464,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T13:00:20.360Z",
-          "status": "online",
-          "responseTime": 566,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T14:24:35.291Z",
-          "status": "online",
-          "responseTime": 374,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T15:29:10.929Z",
-          "status": "online",
-          "responseTime": 441,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T16:26:26.117Z",
-          "status": "online",
-          "responseTime": 302,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-13T17:28:04.697Z",
-          "status": "online",
-          "responseTime": 479,
-          "details": {
-            "statusCode": 200
-          }
-        },
         {
           "timestamp": "2026-08-13T18:27:31.073Z",
           "status": "online",
@@ -15985,10 +15881,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-11-11T17:58:04.924Z",
+          "status": "online",
+          "responseTime": 454,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-11-11T10:25:43.059Z"
+  "lastUpdated": "2026-11-11T17:58:04.924Z"
 }
