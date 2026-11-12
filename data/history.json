@@ -3,70 +3,6 @@
     "main-website": {
       "checks": [
         {
-          "timestamp": "2026-08-14T08:34:34.735Z",
-          "status": "online",
-          "responseTime": 525,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T09:38:52.704Z",
-          "status": "online",
-          "responseTime": 424,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T10:38:12.354Z",
-          "status": "online",
-          "responseTime": 470,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T11:25:16.087Z",
-          "status": "online",
-          "responseTime": 408,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T12:05:55.577Z",
-          "status": "online",
-          "responseTime": 563,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T13:35:14.577Z",
-          "status": "online",
-          "responseTime": 505,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T14:33:58.102Z",
-          "status": "online",
-          "responseTime": 623,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T15:24:53.457Z",
-          "status": "online",
-          "responseTime": 531,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
           "timestamp": "2026-08-14T16:13:12.963Z",
           "status": "online",
           "responseTime": 501,
@@ -7857,6 +7793,14 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-11-12T16:01:27.791Z",
+          "status": "online",
+          "responseTime": 336,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     },
@@ -7874,70 +7818,6 @@
     },
     "random-gif-api": {
       "checks": [
-        {
-          "timestamp": "2026-08-14T08:34:34.735Z",
-          "status": "online",
-          "responseTime": 442,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T09:38:52.704Z",
-          "status": "online",
-          "responseTime": 310,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T10:38:12.354Z",
-          "status": "online",
-          "responseTime": 403,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T11:25:16.087Z",
-          "status": "online",
-          "responseTime": 315,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T12:05:55.577Z",
-          "status": "online",
-          "responseTime": 423,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T13:35:14.577Z",
-          "status": "online",
-          "responseTime": 475,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T14:33:58.102Z",
-          "status": "online",
-          "responseTime": 520,
-          "details": {
-            "statusCode": 200
-          }
-        },
-        {
-          "timestamp": "2026-08-14T15:24:53.457Z",
-          "status": "online",
-          "responseTime": 495,
-          "details": {
-            "statusCode": 200
-          }
-        },
         {
           "timestamp": "2026-08-14T16:13:12.963Z",
           "status": "online",
@@ -15729,10 +15609,18 @@
           "details": {
             "statusCode": 200
           }
+        },
+        {
+          "timestamp": "2026-11-12T16:01:27.791Z",
+          "status": "online",
+          "responseTime": 400,
+          "details": {
+            "statusCode": 200
+          }
         }
       ]
     }
   },
   "incidents": [],
-  "lastUpdated": "2026-11-12T07:17:29.978Z"
+  "lastUpdated": "2026-11-12T16:01:27.791Z"
 }
