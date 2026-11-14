@@ -3,9 +3,9 @@
 # ─────────────────────────────────────────────
 
 site:
-  title: "Kisara Services"
-  description: "Serverless Status Monitor by Kisara Group"
-  url: "https://dominic-ktz.github.io/uptime-maid"
+  title: "BiteBytes Services"
+  description: "Serverless Status Monitor by BiteBytes Group"
+  url: "https://status.dominic-ktz.de"
 
 theme:
   accent: "#ff2d95"        # Cyberpunk-Pink (Hauptfarbe)
@@ -28,7 +28,7 @@ services:
   - id: "random-gif-api"
     name: "Random GIF API"
     type: "http"
-    url: "https://kisara.de"
+    url: "https://gifs.rndmserv.de"
     expectedStatus: 200
 
 notifications:
