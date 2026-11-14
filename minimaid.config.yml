@@ -15,6 +15,9 @@ theme:
   warning: "#ffbe0b"       # Neon-Gelb (Degraded)
   background: "#07070e"    # Hintergrund
 
+# Service-Typen: http, tcp, minecraft-java, minecraft-bedrock, fivem
+# Optionale Felder für alle: description, link (wird auf der Status-Seite verlinkt)
+# Optionale Felder für http: expectedStatus (Zahl oder Liste), method, keyword, headers
 services:
   - id: "main-website"
     name: "Kisara-de"
@@ -38,5 +41,6 @@ notifications:
 
 settings:
   check_timeout: 10000     # Timeout pro Check in ms
-  history_max_days: 90     # Wie lange History aufbewahren
-  checks_per_day: 288      # 24h / 5min = 288 Checks pro Tag
+  history_max_days: 90     # Wie lange History aufbewahren (Tage)
+  retries: 1               # Wiederholungen, bevor ein Service als gestört gilt
+  retry_delay: 2000        # Pause zwischen den Wiederholungen in ms

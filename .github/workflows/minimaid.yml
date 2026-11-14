@@ -2,14 +2,24 @@ name: Minimaid Status Check
 
 on:
   schedule:
-    # Alle 5 Minuten
+    # Alle 5 Minuten (GitHub führt geplante Workflows bei hoher Last oft verzögert aus)
     - cron: '*/5 * * * *'
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'css/**'
+      - 'js/**'
+      - 'worker/**'
+      - 'data/incidents.json'
+      - 'minimaid.config.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/minimaid.yml'
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: minimaid-check
@@ -18,18 +28,21 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Repository auschecken
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Node.js einrichten
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version-file: '.nvmrc'
+          cache: npm
 
       - name: Abhängigkeiten installieren
-        run: npm ci
+        run: npm ci --omit=dev --no-audit --no-fund
 
       - name: Minimaid Worker ausführen
         env:
@@ -39,33 +52,45 @@ jobs:
       - name: Änderungen committen
         run: |
           git config user.name "Minimaid Bot"
-          git config user.email "minimaid-bot@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/
           if git diff --cached --quiet; then
             echo "Keine Änderungen in data/"
-          else
-            git commit -m "🔍 Minimaid: Status-Update $(date -u +'%Y-%m-%d %H:%M UTC')"
-            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
+            exit 0
           fi
+          git commit -m "🔍 Minimaid: Status-Update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          # Falls zwischendurch jemand gepusht hat: rebasen und erneut versuchen.
+          for attempt in 1 2 3; do
+            git push && exit 0
+            echo "Push fehlgeschlagen (Versuch $attempt), rebase …"
+            sleep $((attempt * 5))
+            git pull --rebase
+          done
+          exit 1
+
+      - name: Seite zusammenstellen
+        run: |
+          mkdir -p _site
+          cp -r index.html css js data _site/
+
+      - name: Pages-Artefakt hochladen
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
 
   deploy:
     needs: check
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Repository auschecken
-        uses: actions/checkout@v4
-
-      - name: GitHub Pages konfigurieren
-        uses: actions/configure-pages@v5
-
-      - name: Artefakt hochladen
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
       - name: Auf GitHub Pages deployen
         id: deployment
         uses: actions/deploy-pages@v4

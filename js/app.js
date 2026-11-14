@@ -1,686 +1,672 @@
 /* ═══════════════════════════════════════════
-   Minimaid – Frontend Application
+   Minimaid – Frontend
+   Lädt data/config.json, data/history.json und data/incidents.json,
+   rendert alles clientseitig und aktualisiert sich jede Minute selbst.
    ═══════════════════════════════════════════ */
 
-const COLORS = {
-  pink: '#ff2d95',
-  blue: '#00d4ff',
-  green: '#39ff14',
-  red: '#ff073a',
-  yellow: '#ffbe0b',
+const REFRESH_MS = 60_000;
+const STALE_AFTER_MS = 6 * 3_600_000;
+const BAR_DAYS = 30;
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+
+const RANGES = {
+  '24h': { ms: DAY, buckets: 24 },
+  '7d': { ms: 7 * DAY, buckets: 28 },
+  '30d': { ms: 30 * DAY, buckets: 30 },
+  '90d': { ms: 90 * DAY, buckets: 45 },
 };
 
-const TYPE_ICONS = {
-  'http': '🌐',
-  'https': '🌐',
-  'minecraft-java': '⛏️',
-  'minecraft-bedrock': '⛏️',
-  'fivem': '🚗',
+const TYPE_META = {
+  http: { icon: '🌐', label: 'Website', css: 'type-http' },
+  https: { icon: '🌐', label: 'Website', css: 'type-http' },
+  tcp: { icon: '🔌', label: 'TCP', css: 'type-tcp' },
+  'minecraft-java': { icon: '⛏️', label: 'Minecraft Java', css: 'type-minecraft' },
+  'minecraft-bedrock': { icon: '⛏️', label: 'Minecraft Bedrock', css: 'type-minecraft' },
+  fivem: { icon: '🚗', label: 'FiveM', css: 'type-fivem' },
 };
 
-const TYPE_CSS = {
-  'http': 'type-http',
-  'https': 'type-http',
-  'minecraft-java': 'type-minecraft',
-  'minecraft-bedrock': 'type-minecraft',
-  'fivem': 'type-fivem',
+const STATUS_LABEL = {
+  online: 'Online', offline: 'Offline', degraded: 'Beeinträchtigt', unknown: 'Unbekannt',
+  investigating: 'Untersuchung', identified: 'Identifiziert', monitoring: 'Beobachtung',
+  resolved: 'Gelöst', maintenance: 'Wartung',
 };
 
-let historyData = null;
-let configData = null;
-let manualIncidents = [];
-let uptimeChart = null;
-let responseChart = null;
-let currentRange = '24h';
-let currentServiceFilter = '__all__';
+/** Manuelle Vorfall-Status → Farbton der Status-Badges. */
+const INCIDENT_TONE = {
+  investigating: 'offline', identified: 'offline', monitoring: 'degraded',
+  resolved: 'online', maintenance: 'info', offline: 'offline', degraded: 'degraded',
+};
+const INCIDENT_ICON = { investigating: '🔍', identified: '🔎', monitoring: '👀', resolved: '✅', maintenance: '🔧' };
 
-// ─── Bootstrap ──────────────────────────────────
-document.addEventListener('DOMContentLoaded', init);
+const state = {
+  config: null,
+  history: null,
+  manualIncidents: [],
+  checksById: new Map(),
+  range: '24h',
+  filter: '__all__',
+  charts: { uptime: null, response: null },
+};
 
-async function init() {
+const $ = (sel) => document.querySelector(sel);
+
+const fmtDateTime = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
+const fmtDay = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+const fmtTime = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
+const fmtShortDate = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' });
+const fmtRelative = new Intl.RelativeTimeFormat('de-DE', { numeric: 'auto' });
+
+// ─── Kleine DOM-Hilfe: erzeugt Elemente ohne innerHTML (kein XSS-Risiko) ───
+function h(tag, props = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (value === undefined || value === null || value === false) continue;
+    if (key === 'class') el.className = value;
+    else if (key === 'dataset') Object.assign(el.dataset, value);
+    else if (key.startsWith('on')) el.addEventListener(key.slice(2), value);
+    else el.setAttribute(key, value === true ? '' : value);
+  }
+  el.append(...children.flat().filter((c) => c !== null && c !== undefined && c !== false));
+  return el;
+}
+
+// ─── Daten laden ───────────────────────────────
+async function fetchJson(path, { optional = false } = {}) {
   try {
-    const [historyRes, configRes, incidentsRes] = await Promise.all([
-      fetch('data/history.json'),
-      fetch('minimaid.config.yml'),
-      fetch('data/incidents.json').catch(() => null),
-    ]);
-
-    if (!historyRes.ok) throw new Error('history.json nicht gefunden');
-    historyData = await historyRes.json();
-
-    if (configRes.ok) {
-      const yamlText = await configRes.text();
-      configData = parseSimpleYaml(yamlText);
-    }
-
-    if (incidentsRes?.ok) {
-      manualIncidents = await incidentsRes.json();
-    }
-
-    render();
+    const res = await fetch(`${path}?v=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+    return await res.json();
   } catch (err) {
-    console.error('Minimaid: Fehler beim Laden', err);
-    document.getElementById('loading-state').classList.add('hidden');
-    document.getElementById('empty-state').classList.remove('hidden');
+    if (optional) return null;
+    throw err;
   }
 }
 
-// ─── Render Pipeline ────────────────────────────
-function render() {
-  document.getElementById('loading-state').classList.add('hidden');
+async function loadData() {
+  const [history, config, incidents] = await Promise.all([
+    fetchJson('data/history.json'),
+    fetchJson('data/config.json', { optional: true }),
+    fetchJson('data/incidents.json', { optional: true }),
+  ]);
 
-  const services = configData?.services || [];
-  const hasChecks = Object.values(historyData.services).some(s => s.checks?.length > 0);
+  state.history = { services: {}, incidents: [], ...history };
+  state.manualIncidents = Array.isArray(incidents) ? incidents : [];
+  // Fallback, falls config.json (noch) fehlt: Services aus der History ableiten.
+  state.config = config ?? {
+    site: {},
+    theme: {},
+    services: Object.keys(state.history.services).map((id) => ({ id, name: id, type: 'http' })),
+  };
 
-  if (!hasChecks && services.length === 0) {
-    document.getElementById('empty-state').classList.remove('hidden');
-    return;
+  state.checksById = new Map(
+    Object.entries(state.history.services).map(([id, svc]) => [
+      id,
+      (svc.checks ?? [])
+        .map((c) => ({ ...c, t: Date.parse(c.timestamp) }))
+        .sort((a, b) => a.t - b.t),
+    ])
+  );
+}
+
+const services = () => state.config.services ?? [];
+const checksOf = (id) => state.checksById.get(id) ?? [];
+const latestOf = (id) => checksOf(id).at(-1) ?? null;
+
+// ─── Berechnungen ──────────────────────────────
+function uptimeSince(checks, sinceMs) {
+  let total = 0;
+  let online = 0;
+  for (const c of checks) {
+    if (c.t < sinceMs) continue;
+    total++;
+    if (c.status === 'online') online++;
+  }
+  return total ? (online / total) * 100 : null;
+}
+
+/** Verteilt Checks in gleich große Zeitfenster (ein Durchlauf, O(n)). */
+function bucketize(checks, start, end, count) {
+  const size = (end - start) / count;
+  const buckets = Array.from({ length: count }, (_, i) => ({
+    start: start + i * size,
+    end: start + (i + 1) * size,
+    total: 0, online: 0, offline: 0, degraded: 0, rtSum: 0, rtCount: 0,
+  }));
+  for (const c of checks) {
+    if (c.t < start || c.t >= end) continue;
+    const b = buckets[Math.min(count - 1, Math.floor((c.t - start) / size))];
+    b.total++;
+    b[c.status] = (b[c.status] ?? 0) + 1;
+    // Antwortzeiten nur von erfolgreichen Checks – Timeouts würden die Kurve verfälschen.
+    if (c.status === 'online' && Number.isFinite(c.responseTime)) {
+      b.rtSum += c.responseTime;
+      b.rtCount++;
+    }
+  }
+  return buckets;
+}
+
+function uptimeClass(pct) {
+  if (pct === null) return 'uptime-none';
+  if (pct >= 99) return 'uptime-good';
+  if (pct >= 95) return 'uptime-warn';
+  return 'uptime-bad';
+}
+
+const fmtPct = (pct) => (pct === null ? '—' : `${pct >= 99.995 ? '100' : pct.toFixed(2)}%`);
+
+function fmtDuration(ms) {
+  const min = Math.max(1, Math.round(ms / 60_000));
+  if (min < 60) return `${min} Min.`;
+  const hours = Math.floor(min / 60);
+  if (hours < 48) return `${hours} Std. ${min % 60} Min.`;
+  return `${Math.round(hours / 24)} Tage`;
+}
+
+function fmtAgo(ms) {
+  const diff = ms - Date.now();
+  const abs = Math.abs(diff);
+  if (abs < HOUR) return fmtRelative.format(Math.round(diff / 60_000), 'minute');
+  if (abs < DAY) return fmtRelative.format(Math.round(diff / HOUR), 'hour');
+  return fmtRelative.format(Math.round(diff / DAY), 'day');
+}
+
+// ─── Theme & Kopfbereich ───────────────────────
+function applySite() {
+  const { site = {}, theme = {} } = state.config;
+  const vars = { accent: '--accent', secondary: '--secondary', success: '--success', danger: '--danger', warning: '--warning', background: '--bg-dark' };
+  for (const [key, cssVar] of Object.entries(vars)) {
+    if (/^#[0-9a-f]{3,8}$/i.test(theme[key] ?? '')) document.documentElement.style.setProperty(cssVar, theme[key]);
+  }
+  if (theme.background) {
+    document.querySelector('meta[name="theme-color"][media*="dark"]')?.setAttribute('content', theme.background);
   }
 
-  renderLastUpdated();
-  renderOverallBanner(services);
-  renderServiceCards(services);
-  renderCharts(services);
-  renderIncidents();
-  bindChartControls();
+  if (site.title) {
+    $('#site-title').textContent = site.title;
+    $('#brand-name').textContent = site.title;
+    document.title = `${site.title} – Status`;
+  }
+  if (site.description) {
+    $('#site-description').textContent = site.description;
+    document.querySelector('meta[name="description"]')?.setAttribute('content', site.description);
+  }
 }
 
 function renderLastUpdated() {
-  const el = document.getElementById('last-updated');
-  if (historyData.lastUpdated) {
-    const d = new Date(historyData.lastUpdated);
-    el.textContent = `Letztes Update: ${formatDateTime(d)}`;
+  const ts = Date.parse(state.history.lastUpdated);
+  const el = $('#last-updated');
+  const stale = $('#stale-warning');
+  if (!Number.isFinite(ts)) {
+    el.textContent = 'Noch kein Check gelaufen';
+    stale.hidden = true;
+    return;
   }
+  el.textContent = `Letzter Check: ${fmtDateTime.format(ts)} (${fmtAgo(ts)})`;
+  el.title = new Date(ts).toISOString();
+  const age = Date.now() - ts;
+  stale.hidden = age < STALE_AFTER_MS;
+  stale.textContent = `Daten sind ${fmtDuration(age)} alt`;
 }
 
-// ─── Overall Banner ─────────────────────────────
-function renderOverallBanner(services) {
-  const banner = document.getElementById('overall-status');
-  const statuses = services.map(s => getLatestStatus(s.id));
-
-  const offlineCount = statuses.filter(s => s === 'offline').length;
-  const degradedCount = statuses.filter(s => s === 'degraded').length;
-
-  banner.style.display = 'block';
-
-  if (offlineCount === 0 && degradedCount === 0) {
-    banner.className = 'rounded-xl p-4 text-center font-semibold text-lg transition-all duration-500 border banner-all-online';
-    banner.textContent = '✓ Alle Systeme sind betriebsbereit';
-  } else if (offlineCount > 0) {
-    banner.className = 'rounded-xl p-4 text-center font-semibold text-lg transition-all duration-500 border banner-major-outage';
-    banner.textContent = `⚠ ${offlineCount} Service${offlineCount > 1 ? 's' : ''} offline`;
-  } else {
-    banner.className = 'rounded-xl p-4 text-center font-semibold text-lg transition-all duration-500 border banner-some-issues';
-    banner.textContent = `⚡ ${degradedCount} Service${degradedCount > 1 ? 's' : ''} beeinträchtigt`;
-  }
+// ─── Gesamtstatus & aktive Vorfälle ────────────
+function allIncidents() {
+  const auto = (state.history.incidents ?? []).map((inc) => {
+    const started = Date.parse(inc.startedAt ?? inc.timestamp);
+    const resolved = inc.resolvedAt ? Date.parse(inc.resolvedAt) : null;
+    return { ...inc, source: 'auto', started, resolved, active: !resolved, sortKey: resolved ?? started };
+  });
+  const manual = state.manualIncidents.map((inc) => {
+    const started = Date.parse(inc.createdAt);
+    const last = inc.updates?.at(-1);
+    return {
+      ...inc,
+      source: 'manual',
+      started,
+      active: inc.status !== 'resolved',
+      sortKey: last ? Date.parse(last.timestamp) : started,
+    };
+  });
+  return [...auto, ...manual].sort((a, b) => b.sortKey - a.sortKey);
 }
 
-// ─── Service Cards ──────────────────────────────
-function renderServiceCards(services) {
-  const grid = document.getElementById('services-grid');
-  grid.innerHTML = '';
+function renderBanner(incidents) {
+  const banner = $('#overall-status');
+  const statuses = services().map((s) => latestOf(s.id)?.status ?? 'unknown');
+  const count = (st) => statuses.filter((s) => s === st).length;
+  const offline = count('offline');
+  const degraded = count('degraded');
+  const maintenance = incidents.some((i) => i.active && i.source === 'manual' && (i.status === 'maintenance' || i.severity === 'maintenance'));
+  const plural = (n) => (n === 1 ? 'Service' : 'Services');
 
-  for (const service of services) {
-    const svcHistory = historyData.services[service.id];
-    const checks = svcHistory?.checks || [];
-    const latest = checks[checks.length - 1];
-    const status = latest?.status || 'unknown';
-
-    const card = document.createElement('div');
-    card.className = 'service-card';
-    card.innerHTML = buildCardHTML(service, latest, status, checks);
-    grid.appendChild(card);
-  }
-}
-
-function buildCardHTML(service, latest, status, checks) {
-  const icon = TYPE_ICONS[service.type] || '🔗';
-  const typeCss = TYPE_CSS[service.type] || 'type-http';
-  const uptime = calcUptimePercent(checks, 24 * 60);
-  const uptimeColor = uptime >= 99 ? 'text-neon-green' : uptime >= 95 ? 'text-neon-yellow' : 'text-neon-red';
-
-  let detailsHTML = '';
-  if (latest?.details) {
-    const d = latest.details;
-    if (d.players !== undefined) {
-      detailsHTML += `<span class="meta-pill">👥 ${d.players}/${d.maxPlayers || '?'}</span>`;
-    }
-    if (d.version) {
-      detailsHTML += `<span class="meta-pill">v${d.version}</span>`;
-    }
-    if (d.statusCode) {
-      detailsHTML += `<span class="meta-pill">HTTP ${d.statusCode}</span>`;
-    }
+  let tone = 'success';
+  let icon = '✓';
+  let text = 'Alle Systeme sind betriebsbereit';
+  let short = 'Alles in Ordnung';
+  if (offline) {
+    tone = 'danger';
+    icon = '!';
+    text = `${offline} ${plural(offline)} offline`;
+    if (degraded) text += `, ${degraded} beeinträchtigt`;
+    short = 'Störung';
+  } else if (degraded) {
+    tone = 'warning';
+    icon = '!';
+    text = `${degraded} ${plural(degraded)} beeinträchtigt`;
+    short = 'Beeinträchtigt';
+  } else if (maintenance) {
+    tone = 'info';
+    icon = '🔧';
+    text = 'Geplante Wartungsarbeiten';
+    short = 'Wartung';
+  } else if (statuses.length && statuses.every((s) => s === 'unknown')) {
+    tone = 'info';
+    icon = 'i';
+    text = 'Noch keine Messwerte vorhanden';
+    short = 'Keine Daten';
   }
 
-  const responseTime = latest?.responseTime;
-  const rtDisplay = responseTime !== undefined ? `${responseTime}ms` : '—';
+  banner.dataset.tone = tone;
+  banner.querySelector('.banner-icon').textContent = icon;
+  banner.querySelector('.banner-text').textContent = text;
+  banner.hidden = false;
 
-  const uptimeBarHTML = buildUptimeBar(checks, 48);
+  const pill = $('#topbar-status');
+  pill.dataset.tone = tone;
+  pill.querySelector('.status-pill-text').textContent = short;
+  pill.title = text;
 
-  return `
-    <div class="flex items-start justify-between mb-4">
-      <div class="flex items-center gap-3">
-        <div class="type-icon ${typeCss}">${icon}</div>
-        <div>
-          <h3 class="font-semibold text-white text-sm">${escapeHtml(service.name)}</h3>
-          <p class="text-xs text-gray-500 font-mono">${escapeHtml(service.type)}</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="status-dot status-${status}"></div>
-        <span class="status-badge badge-${status}">${statusLabel(status)}</span>
-      </div>
-    </div>
-
-    <div class="mb-4">
-      <div class="uptime-bar">${uptimeBarHTML}</div>
-      <div class="flex justify-between mt-1.5 text-[0.65rem] text-gray-500">
-        <span>48h her</span>
-        <span>Jetzt</span>
-      </div>
-    </div>
-
-    <div class="flex items-center justify-between">
-      <div class="flex gap-2 flex-wrap">
-        <span class="meta-pill">⏱ ${rtDisplay}</span>
-        ${detailsHTML}
-      </div>
-      <span class="text-xs font-mono font-bold ${uptimeColor}">${uptime.toFixed(1)}%</span>
-    </div>
-  `;
+  const active = incidents.filter((i) => i.active);
+  const box = $('#active-incidents');
+  box.replaceChildren(...active.map((inc) => {
+    const el = renderIncident(inc);
+    el.classList.add('glass');
+    return el;
+  }));
+  box.hidden = active.length === 0;
 }
 
-function buildUptimeBar(checks, hours) {
+// ─── Service-Karten ────────────────────────────
+function renderCards() {
   const now = Date.now();
-  const segmentCount = Math.min(48, Math.max(12, hours));
-  const totalMs = hours * 60 * 60 * 1000;
-  const segmentMs = totalMs / segmentCount;
-  const segments = [];
+  const cards = services().map((svc) => {
+    const checks = checksOf(svc.id);
+    const latest = checks.at(-1);
+    const status = latest?.status ?? 'unknown';
+    const meta = TYPE_META[svc.type] ?? { icon: '🔗', label: svc.type, css: 'type-http' };
+    const d = latest?.details ?? {};
 
-  for (let i = 0; i < segmentCount; i++) {
-    const segStart = now - totalMs + i * segmentMs;
-    const segEnd = segStart + segmentMs;
+    const pills = [
+      latest?.responseTime !== undefined && status !== 'offline' && h('span', { class: 'meta-pill', title: 'Antwortzeit' }, `⏱ ${latest.responseTime} ms`),
+      d.players !== undefined && h('span', { class: 'meta-pill', title: 'Spieler' }, `👥 ${d.players}/${d.maxPlayers || '?'}`),
+      d.version && h('span', { class: 'meta-pill', title: 'Version' }, `v${d.version}`),
+      d.statusCode && h('span', { class: 'meta-pill', title: 'HTTP-Status' }, `HTTP ${d.statusCode}`),
+      d.error && h('span', { class: 'meta-pill', title: d.error }, `⚠ ${d.error}`),
+      latest && h('span', { class: 'meta-pill', title: fmtDateTime.format(latest.t) }, `⟳ ${fmtAgo(latest.t)}`),
+    ];
 
-    const segChecks = checks.filter(c => {
-      const t = new Date(c.timestamp).getTime();
-      return t >= segStart && t < segEnd;
-    });
+    const up24 = uptimeSince(checks, now - DAY);
+    const up30 = uptimeSince(checks, now - BAR_DAYS * DAY);
 
-    let cls = 'seg-nodata';
-    let tooltip = formatDateShort(new Date(segStart));
+    const title = svc.link
+      ? h('a', { href: svc.link, target: '_blank', rel: 'noopener' }, svc.name)
+      : svc.name;
 
-    if (segChecks.length > 0) {
-      const hasOffline = segChecks.some(c => c.status === 'offline');
-      const hasDegraded = segChecks.some(c => c.status === 'degraded');
-
-      if (hasOffline) {
-        cls = 'seg-offline';
-        tooltip += ' – Offline';
-      } else if (hasDegraded) {
-        cls = 'seg-degraded';
-        tooltip += ' – Beeinträchtigt';
-      } else {
-        cls = 'seg-online';
-        tooltip += ' – Online';
-      }
-    } else {
-      tooltip += ' – Keine Daten';
-    }
-
-    segments.push(
-      `<div class="uptime-bar-segment ${cls}"><div class="uptime-tooltip">${tooltip}</div></div>`
+    return h('article', { class: 'service-card glass glass-interactive', 'aria-label': `${svc.name}: ${STATUS_LABEL[status]}` },
+      h('div', { class: 'card-head' },
+        h('div', { class: 'card-title' },
+          h('div', { class: `type-icon ${meta.css}`, 'aria-hidden': 'true' }, meta.icon),
+          h('div', {},
+            h('h3', {}, title),
+            h('p', { class: 'card-type' }, meta.label),
+          ),
+        ),
+        h('div', { class: 'card-status' },
+          h('span', { class: 'status-dot', dataset: { status }, 'aria-hidden': 'true' }),
+          h('span', { class: 'badge', dataset: { status } }, STATUS_LABEL[status] ?? status),
+        ),
+      ),
+      svc.description && h('p', { class: 'card-desc' }, svc.description),
+      h('div', {},
+        renderUptimeBar(checks, now),
+        h('div', { class: 'bar-legend', 'aria-hidden': 'true' },
+          h('span', {}, `vor ${BAR_DAYS} Tagen`), h('span', {}, 'Heute')),
+      ),
+      h('div', { class: 'card-foot' },
+        h('div', { class: 'pills' }, pills),
+        h('div', { class: 'uptime-stats' },
+          h('span', { class: uptimeClass(up24) }, fmtPct(up24), h('small', {}, '24h')),
+          h('span', { class: uptimeClass(up30) }, fmtPct(up30), h('small', {}, `${BAR_DAYS}d`)),
+        ),
+      ),
     );
-  }
-
-  return segments.join('');
-}
-
-// ─── Charts ─────────────────────────────────────
-function renderCharts(services) {
-  const section = document.getElementById('charts-section');
-  section.style.display = 'block';
-
-  const select = document.getElementById('chart-service-select');
-  select.innerHTML = '<option value="__all__">Alle Services</option>';
-  for (const svc of services) {
-    const opt = document.createElement('option');
-    opt.value = svc.id;
-    opt.textContent = svc.name;
-    select.appendChild(opt);
-  }
-
-  updateCharts();
-}
-
-function updateCharts() {
-  const rangeMs = getRangeMs(currentRange);
-  const cutoff = new Date(Date.now() - rangeMs);
-  const services = configData?.services || [];
-
-  destroyCharts();
-
-  const uptimeCtx = document.getElementById('uptime-chart').getContext('2d');
-  const responseCtx = document.getElementById('response-chart').getContext('2d');
-
-  const filteredServices = currentServiceFilter === '__all__'
-    ? services
-    : services.filter(s => s.id === currentServiceFilter);
-
-  const uptimeDatasets = [];
-  const responseDatasets = [];
-  const colorPalette = [COLORS.pink, COLORS.blue, COLORS.green, COLORS.yellow, '#a855f7', '#f97316'];
-
-  filteredServices.forEach((svc, idx) => {
-    const checks = (historyData.services[svc.id]?.checks || [])
-      .filter(c => new Date(c.timestamp) >= cutoff);
-
-    if (checks.length === 0) return;
-
-    const color = colorPalette[idx % colorPalette.length];
-    const buckets = bucketize(checks, currentRange);
-
-    uptimeDatasets.push({
-      label: svc.name,
-      data: buckets.map(b => ({ x: b.time, y: b.uptimePercent })),
-      borderColor: color,
-      backgroundColor: hexToRgba(color, 0.1),
-      borderWidth: 2,
-      fill: true,
-      tension: 0.3,
-      pointRadius: 0,
-      pointHitRadius: 8,
-    });
-
-    responseDatasets.push({
-      label: svc.name,
-      data: buckets.map(b => ({ x: b.time, y: b.avgResponseTime })),
-      borderColor: color,
-      backgroundColor: hexToRgba(color, 0.08),
-      borderWidth: 2,
-      fill: true,
-      tension: 0.3,
-      pointRadius: 0,
-      pointHitRadius: 8,
-    });
   });
 
-  const timeUnit = getTimeUnit(currentRange);
+  $('#services-grid').replaceChildren(...cards);
+}
 
-  const commonOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: {
-        display: filteredServices.length > 1,
-        labels: { color: '#888', font: { size: 11 }, boxWidth: 12 },
-      },
-      tooltip: {
-        backgroundColor: '#111128',
-        borderColor: 'rgba(255, 45, 149, 0.3)',
-        borderWidth: 1,
-        titleColor: '#fff',
-        bodyColor: '#ccc',
-        padding: 10,
-        cornerRadius: 8,
-      },
-    },
-    scales: {
-      x: {
-        type: 'time',
-        time: { unit: timeUnit },
-        grid: { color: 'rgba(26, 26, 62, 0.5)' },
-        ticks: { color: '#555', font: { size: 10 } },
-      },
-      y: {
-        grid: { color: 'rgba(26, 26, 62, 0.5)' },
-        ticks: { color: '#555', font: { size: 10 } },
-      },
-    },
+function renderUptimeBar(checks, now) {
+  // Tagesgenaue Segmente, ausgerichtet an lokaler Mitternacht.
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const start = today.getTime() - (BAR_DAYS - 1) * DAY;
+  const buckets = bucketize(checks, start, today.getTime() + DAY, BAR_DAYS);
+
+  const segments = buckets.map((b) => {
+    let status;
+    let detail = 'Keine Daten';
+    if (b.total) {
+      const pct = (b.online / b.total) * 100;
+      status = b.offline === 0 && b.degraded === 0 ? 'online' : pct >= 95 ? 'degraded' : 'offline';
+      detail = `${fmtPct(pct)} Uptime · ${b.total} Checks`;
+      if (b.offline) detail += ` · ${b.offline}× offline`;
+    }
+    const label = `${fmtDay.format(b.start)}: ${detail}`;
+    return h('span', { role: 'listitem', 'data-tip': label, 'aria-label': label, dataset: status ? { status } : {} });
+  });
+
+  return h('div', { class: 'uptime-bar', role: 'list', 'aria-label': `Verfügbarkeit der letzten ${BAR_DAYS} Tage` }, segments);
+}
+
+// ─── Tooltip (Maus, Touch & Tastatur) ──────────
+function setupTooltip() {
+  const tip = $('#tooltip');
+  const show = (target) => {
+    const text = target?.closest?.('[data-tip]')?.dataset.tip;
+    if (!text) return hide();
+    const rect = target.getBoundingClientRect();
+    tip.textContent = text;
+    tip.hidden = false;
+    const half = tip.offsetWidth / 2 + 8;
+    const x = Math.min(window.innerWidth - half, Math.max(half, rect.left + rect.width / 2));
+    tip.style.left = `${x}px`;
+    tip.style.top = `${rect.top}px`;
   };
+  const hide = () => { tip.hidden = true; };
 
-  uptimeChart = new Chart(uptimeCtx, {
-    type: 'line',
-    data: { datasets: uptimeDatasets },
-    options: {
-      ...commonOptions,
-      scales: {
-        ...commonOptions.scales,
-        y: { ...commonOptions.scales.y, min: 0, max: 100, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + '%' } },
-      },
-    },
-  });
-
-  responseChart = new Chart(responseCtx, {
-    type: 'line',
-    data: { datasets: responseDatasets },
-    options: {
-      ...commonOptions,
-      scales: {
-        ...commonOptions.scales,
-        y: { ...commonOptions.scales.y, beginAtZero: true, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + 'ms' } },
-      },
-    },
-  });
+  document.addEventListener('pointerover', (e) => show(e.target));
+  document.addEventListener('focusin', (e) => show(e.target));
+  document.addEventListener('focusout', hide);
+  window.addEventListener('scroll', hide, { passive: true });
 }
 
-function bucketize(checks, range) {
-  const bucketCount = { '24h': 24, '7d': 28, '30d': 30, '90d': 45 }[range] || 24;
-  const rangeMs = getRangeMs(range);
-  const now = Date.now();
-  const bucketMs = rangeMs / bucketCount;
-  const buckets = [];
-
-  for (let i = 0; i < bucketCount; i++) {
-    const start = now - rangeMs + i * bucketMs;
-    const end = start + bucketMs;
-
-    const inBucket = checks.filter(c => {
-      const t = new Date(c.timestamp).getTime();
-      return t >= start && t < end;
-    });
-
-    const total = inBucket.length;
-    const onlineCount = inBucket.filter(c => c.status === 'online').length;
-    const avgRt = total > 0
-      ? inBucket.reduce((sum, c) => sum + (c.responseTime || 0), 0) / total
-      : 0;
-
-    buckets.push({
-      time: new Date(start + bucketMs / 2),
-      uptimePercent: total > 0 ? (onlineCount / total) * 100 : null,
-      avgResponseTime: total > 0 ? Math.round(avgRt) : null,
-    });
-  }
-
-  return buckets.filter(b => b.uptimePercent !== null);
+// ─── Glanzlicht, das dem Zeiger folgt ──────────
+function setupGlassSheen() {
+  if (!window.matchMedia('(hover: hover)').matches) return;
+  document.addEventListener('pointermove', (e) => {
+    const card = e.target.closest?.('.glass-interactive');
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+    card.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+  }, { passive: true });
 }
 
-function destroyCharts() {
-  if (uptimeChart) { uptimeChart.destroy(); uptimeChart = null; }
-  if (responseChart) { responseChart.destroy(); responseChart = null; }
+// ─── Charts ────────────────────────────────────
+const PALETTE = () => {
+  const css = getComputedStyle(document.documentElement);
+  return ['--accent', '--secondary', '--success', '--warning'].map((v) => css.getPropertyValue(v).trim())
+    .concat(['#a855f7', '#f97316', '#14b8a6', '#e879f9']);
+};
+
+function withAlpha(color, alpha) {
+  const hex = color.replace('#', '');
+  const full = hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex.slice(0, 6);
+  if (!/^[0-9a-f]{6}$/i.test(full)) return color;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** Verlauf von halbtransparenter Linienfarbe zu durchsichtig – wirkt wie getöntes Glas. */
+function glassFill(chart, color) {
+  const area = chart.chartArea;
+  if (!area) return withAlpha(color, 0.12);
+  const gradient = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+  gradient.addColorStop(0, withAlpha(color, 0.3));
+  gradient.addColorStop(1, withAlpha(color, 0));
+  return gradient;
+}
+
+function renderChartControls() {
+  const select = $('#chart-service-select');
+  const options = [h('option', { value: '__all__' }, 'Alle Services'),
+    ...services().map((s) => h('option', { value: s.id }, s.name))];
+  select.replaceChildren(...options);
+  if (!services().some((s) => s.id === state.filter)) state.filter = '__all__';
+  select.value = state.filter;
+}
+
+/** Schiebt den Glas-Daumen des Segment-Controls unter den aktiven Button. */
+function moveThumb() {
+  const group = $('.segmented');
+  const active = group?.querySelector('[aria-pressed="true"]');
+  if (!active || !active.offsetWidth) return;
+  group.style.setProperty('--thumb-x', `${active.offsetLeft}px`);
+  group.style.setProperty('--thumb-w', `${active.offsetWidth}px`);
 }
 
 function bindChartControls() {
-  document.querySelectorAll('.chart-range-btn').forEach(btn => {
+  new ResizeObserver(moveThumb).observe($('.segmented'));
+
+  document.querySelectorAll('.segmented [data-range]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.chart-range-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentRange = btn.dataset.range;
+      state.range = btn.dataset.range;
+      document.querySelectorAll('.segmented [data-range]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      moveThumb();
       updateCharts();
     });
   });
-
-  document.getElementById('chart-service-select').addEventListener('change', (e) => {
-    currentServiceFilter = e.target.value;
+  $('#chart-service-select').addEventListener('change', (e) => {
+    state.filter = e.target.value;
     updateCharts();
   });
 }
 
-// ─── Incidents ──────────────────────────────────
-function renderIncidents() {
-  const section = document.getElementById('incidents-section');
-  const list = document.getElementById('incidents-list');
-  const noIncidents = document.getElementById('no-incidents');
+function formatTick(value) {
+  return state.range === '24h' ? fmtTime.format(value) : fmtShortDate.format(value);
+}
 
-  const autoIncidents = (historyData.incidents || []).map(inc => ({
-    ...inc,
-    _source: 'auto',
-    _sortDate: inc.timestamp,
-  }));
+function chartTheme() {
+  const dark = !window.matchMedia('(prefers-color-scheme: light)').matches;
+  return dark
+    ? { text: 'rgba(235, 235, 245, 0.6)', grid: 'rgba(255, 255, 255, 0.07)', tipBg: 'rgba(28, 28, 36, 0.92)', tipText: '#f5f5f7', tipBorder: 'rgba(255, 255, 255, 0.15)' }
+    : { text: 'rgba(60, 60, 67, 0.7)', grid: 'rgba(0, 0, 0, 0.07)', tipBg: 'rgba(255, 255, 255, 0.95)', tipText: '#1c1c1e', tipBorder: 'rgba(0, 0, 0, 0.08)' };
+}
 
-  const manual = (manualIncidents || []).map(inc => ({
-    ...inc,
-    _source: 'manual',
-    _sortDate: inc.updates?.length
-      ? inc.updates[inc.updates.length - 1].timestamp
-      : inc.createdAt,
-  }));
+function baseChartOptions(yOptions) {
+  const t = chartTheme();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 400 },
+    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    spanGaps: true,
+    plugins: {
+      legend: { labels: { color: t.text, font: { size: 11, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8 } },
+      tooltip: {
+        backgroundColor: t.tipBg,
+        borderColor: t.tipBorder,
+        borderWidth: 1,
+        titleColor: t.tipText,
+        bodyColor: t.tipText,
+        padding: 10,
+        cornerRadius: 12,
+        usePointStyle: true,
+        callbacks: { title: (items) => (items[0] ? fmtDateTime.format(items[0].parsed.x) : '') },
+      },
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        grid: { color: t.grid }, border: { display: false },
+        ticks: { color: t.text, font: { size: 10 }, maxRotation: 0, autoSkipPadding: 16, callback: formatTick },
+      },
+      y: {
+        grid: { color: t.grid }, border: { display: false },
+        ...yOptions,
+        ticks: { color: t.text, font: { size: 10 }, maxTicksLimit: 6, ...yOptions.ticks },
+      },
+    },
+  };
+}
 
-  const all = [...autoIncidents, ...manual].sort(
-    (a, b) => new Date(b._sortDate).getTime() - new Date(a._sortDate).getTime()
-  );
-
-  section.style.display = 'block';
-
-  if (all.length === 0) {
-    list.classList.add('hidden');
-    noIncidents.classList.remove('hidden');
+function updateCharts() {
+  if (typeof window.Chart === 'undefined') {
+    $('#chart-fallback').hidden = false;
     return;
   }
 
-  noIncidents.classList.add('hidden');
-  list.classList.remove('hidden');
+  const { ms, buckets: count } = RANGES[state.range];
+  const end = Date.now();
+  const start = end - ms;
+  const selected = state.filter === '__all__' ? services() : services().filter((s) => s.id === state.filter);
+  const palette = PALETTE();
 
-  list.innerHTML = all.slice(0, 25).map(inc => {
-    if (inc._source === 'auto') return renderAutoIncident(inc);
-    return renderManualIncident(inc);
-  }).join('');
-}
-
-function renderAutoIncident(inc) {
-  const statusCls = inc.newStatus === 'offline' ? 'incident-offline'
-    : inc.newStatus === 'online' ? 'incident-resolved'
-    : 'incident-degraded';
-
-  const icon = inc.newStatus === 'offline' ? '🔴'
-    : inc.newStatus === 'online' ? '🟢' : '🟡';
-
-  return `
-    <div class="incident-item ${statusCls}">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="font-medium text-white text-sm">
-            ${icon} ${escapeHtml(inc.title)}
-          </p>
-          <p class="text-xs text-gray-500 mt-1">
-            ${escapeHtml(inc.serviceName || '')} &middot; ${formatDateTime(new Date(inc.timestamp))}
-          </p>
-        </div>
-        <span class="status-badge badge-${inc.newStatus}">${statusLabel(inc.newStatus)}</span>
-      </div>
-    </div>
-  `;
-}
-
-function renderManualIncident(inc) {
-  const severityMap = {
-    critical: 'incident-offline',
-    major: 'incident-offline',
-    minor: 'incident-degraded',
-    maintenance: 'incident-degraded',
-  };
-  const statusMap = {
-    investigating: 'incident-offline',
-    identified: 'incident-offline',
-    monitoring: 'incident-degraded',
-    resolved: 'incident-resolved',
-    maintenance: 'incident-degraded',
-  };
-  const iconMap = {
-    investigating: '🔍',
-    identified: '🔎',
-    monitoring: '👀',
-    resolved: '✅',
-    maintenance: '🔧',
-  };
-  const badgeStatusMap = {
-    investigating: 'offline',
-    identified: 'offline',
-    monitoring: 'degraded',
-    resolved: 'online',
-    maintenance: 'degraded',
-  };
-
-  const cls = statusMap[inc.status] || severityMap[inc.severity] || 'incident-degraded';
-  const icon = iconMap[inc.status] || '⚡';
-  const badgeStatus = badgeStatusMap[inc.status] || 'degraded';
-
-  const updatesHTML = (inc.updates || [])
-    .slice()
-    .reverse()
-    .map(u => {
-      const uIcon = iconMap[u.status] || '📝';
-      return `
-        <div class="flex gap-3 items-start">
-          <div class="flex flex-col items-center">
-            <span class="text-xs">${uIcon}</span>
-            <div class="w-px h-full bg-neon-border/50 mt-1"></div>
-          </div>
-          <div class="pb-3">
-            <p class="text-xs font-semibold text-gray-300 uppercase tracking-wide">${escapeHtml(u.status)}</p>
-            <p class="text-sm text-gray-400 mt-0.5">${escapeHtml(u.message || '')}</p>
-            <p class="text-[0.65rem] text-gray-600 mt-1 font-mono">${formatDateTime(new Date(u.timestamp))}</p>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-  const servicesHTML = inc.services?.length
-    ? `<span class="text-xs text-gray-600 ml-2">${inc.services.map(s => `<span class="meta-pill">${escapeHtml(s)}</span>`).join(' ')}</span>`
-    : '';
-
-  return `
-    <div class="incident-item ${cls}">
-      <div class="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <p class="font-medium text-white text-sm">
-            ${icon} ${escapeHtml(inc.title)}
-          </p>
-          <p class="text-xs text-gray-500 mt-1">
-            ${formatDateTime(new Date(inc.createdAt))}${servicesHTML}
-          </p>
-        </div>
-        <span class="status-badge badge-${badgeStatus}">${escapeHtml(inc.status)}</span>
-      </div>
-      ${updatesHTML ? `<div class="ml-1 mt-2 border-l border-neon-border/30 pl-2">${updatesHTML}</div>` : ''}
-    </div>
-  `;
-}
-
-// ─── Status Labels ──────────────────────────────
-
-// ─── Helpers ────────────────────────────────────
-function getLatestStatus(serviceId) {
-  const checks = historyData.services[serviceId]?.checks || [];
-  return checks.length > 0 ? checks[checks.length - 1].status : 'unknown';
-}
-
-function calcUptimePercent(checks, minutes) {
-  const cutoff = new Date(Date.now() - minutes * 60 * 1000);
-  const recent = checks.filter(c => new Date(c.timestamp) >= cutoff);
-  if (recent.length === 0) return 100;
-  const online = recent.filter(c => c.status === 'online').length;
-  return (online / recent.length) * 100;
-}
-
-function statusLabel(status) {
-  const labels = {
-    online: 'Online', offline: 'Offline', degraded: 'Degraded', unknown: 'Unbekannt',
-    investigating: 'Untersuchung', identified: 'Identifiziert',
-    monitoring: 'Beobachtung', resolved: 'Gelöst', maintenance: 'Wartung',
-  };
-  return labels[status] || status;
-}
-
-function getRangeMs(range) {
-  const ms = { '24h': 86400000, '7d': 604800000, '30d': 2592000000, '90d': 7776000000 };
-  return ms[range] || ms['24h'];
-}
-
-function getTimeUnit(range) {
-  const units = { '24h': 'hour', '7d': 'day', '30d': 'day', '90d': 'week' };
-  return units[range] || 'hour';
-}
-
-function formatDateTime(date) {
-  return date.toLocaleDateString('de-DE', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+  const uptimeSets = [];
+  const responseSets = [];
+  selected.forEach((svc, i) => {
+    const buckets = bucketize(checksOf(svc.id), start, end, count);
+    if (!buckets.some((b) => b.total)) return;
+    const color = palette[i % palette.length];
+    const line = {
+      label: svc.name, borderColor: color, borderWidth: 2.5, tension: 0.35, fill: true,
+      pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 10, pointBackgroundColor: color,
+      backgroundColor: (ctx) => glassFill(ctx.chart, color),
+    };
+    const mid = (b) => (b.start + b.end) / 2;
+    uptimeSets.push({ ...line,
+      data: buckets.filter((b) => b.total).map((b) => ({ x: mid(b), y: +((b.online / b.total) * 100).toFixed(2) })) });
+    responseSets.push({ ...line,
+      data: buckets.filter((b) => b.rtCount).map((b) => ({ x: mid(b), y: Math.round(b.rtSum / b.rtCount) })) });
   });
+
+  const showLegend = uptimeSets.length > 1;
+  upsertChart('uptime', '#uptime-chart', uptimeSets, start, end, showLegend,
+    { min: 0, max: 100, ticks: { callback: (v) => `${v}%` } },
+    (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%`);
+  upsertChart('response', '#response-chart', responseSets, start, end, showLegend,
+    { beginAtZero: true, ticks: { callback: (v) => `${v} ms` } },
+    (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} ms`);
 }
 
-function formatDateShort(date) {
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
-    + ' ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+function upsertChart(key, selector, datasets, min, max, showLegend, yOptions, labelFn) {
+  let chart = state.charts[key];
+  if (!chart) {
+    const options = baseChartOptions(yOptions);
+    options.plugins.tooltip.callbacks.label = labelFn;
+    chart = state.charts[key] = new window.Chart($(selector), { type: 'line', data: { datasets: [] }, options });
+  }
+  chart.data.datasets = datasets;
+  chart.options.scales.x.min = min;
+  chart.options.scales.x.max = max;
+  chart.options.plugins.legend.display = showLegend;
+  chart.update();
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function hexToRgba(hex, alpha) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-// Minimal YAML parser for config (supports flat + nested structures)
-function parseSimpleYaml(text) {
-  const lines = text.split('\n');
-  const result = { services: [] };
-  let currentSection = null;
-  let currentItem = null;
-
-  for (const rawLine of lines) {
-    const line = rawLine.replace(/\r$/, '');
-    if (!line.trim() || line.trim().startsWith('#')) continue;
-
-    const indent = line.length - line.trimStart().length;
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith('- ') && currentSection === 'services') {
-      if (currentItem) result.services.push(currentItem);
-      currentItem = {};
-      const kv = trimmed.slice(2).trim();
-      if (kv.includes(':')) {
-        const [k, ...v] = kv.split(':');
-        currentItem[k.trim()] = parseYamlValue(v.join(':').trim());
-      }
-      continue;
-    }
-
-    if (indent >= 4 && currentItem) {
-      if (trimmed.includes(':')) {
-        const [k, ...v] = trimmed.split(':');
-        currentItem[k.trim()] = parseYamlValue(v.join(':').trim());
-      }
-      continue;
-    }
-
-    if (trimmed.endsWith(':') && indent === 0) {
-      if (currentItem && currentSection === 'services') {
-        result.services.push(currentItem);
-        currentItem = null;
-      }
-      currentSection = trimmed.slice(0, -1).trim();
-      continue;
-    }
-
-    if (indent === 2 && trimmed.endsWith(':')) {
-      currentSection = trimmed.slice(0, -1).trim();
-      continue;
-    }
+// ─── Vorfälle ──────────────────────────────────
+function renderIncident(inc) {
+  if (inc.source === 'auto') {
+    const tone = inc.active ? (inc.status === 'degraded' ? 'degraded' : 'offline') : 'online';
+    const icon = inc.active ? (tone === 'degraded' ? '🟡' : '🔴') : '🟢';
+    const duration = (inc.resolved ?? Date.now()) - inc.started;
+    return h('article', { class: 'incident', dataset: { status: tone } },
+      h('div', { class: 'incident-head' },
+        h('div', {},
+          h('p', { class: 'incident-title' }, `${icon} ${inc.title}`),
+          h('p', { class: 'incident-meta' },
+            h('span', {}, inc.serviceName ?? inc.serviceId ?? ''),
+            h('span', {}, `· ${fmtDateTime.format(inc.started)}`),
+            h('span', {}, `· ${inc.active ? 'seit' : 'Dauer'} ${fmtDuration(duration)}`),
+          ),
+          inc.error && h('p', { class: 'incident-meta' }, `Fehler: ${inc.error}`),
+        ),
+        h('span', { class: 'badge', dataset: { status: tone } }, inc.active ? 'Laufend' : 'Behoben'),
+      ),
+    );
   }
 
-  if (currentItem && currentSection === 'services') {
-    result.services.push(currentItem);
+  const tone = INCIDENT_TONE[inc.status] ?? 'degraded';
+  const names = new Map(services().map((s) => [s.id, s.name]));
+  const updates = (inc.updates ?? []).slice().reverse();
+
+  return h('article', { class: 'incident', dataset: { status: tone } },
+    h('div', { class: 'incident-head' },
+      h('div', {},
+        h('p', { class: 'incident-title' }, `${INCIDENT_ICON[inc.status] ?? '⚡'} ${inc.title}`),
+        h('p', { class: 'incident-meta' },
+          Number.isFinite(inc.started) && h('span', {}, fmtDateTime.format(inc.started)),
+          (inc.services ?? []).map((id) => h('span', { class: 'meta-pill' }, names.get(id) ?? id)),
+        ),
+      ),
+      h('span', { class: 'badge', dataset: { status: tone } }, STATUS_LABEL[inc.status] ?? inc.status),
+    ),
+    updates.length > 0 && h('ol', { class: 'timeline' },
+      updates.map((u) => h('li', {},
+        h('p', { class: 'timeline-status' }, `${INCIDENT_ICON[u.status] ?? '📝'} ${STATUS_LABEL[u.status] ?? u.status}`),
+        u.message && h('p', { class: 'timeline-msg' }, u.message),
+        h('p', { class: 'timeline-time' }, fmtDateTime.format(Date.parse(u.timestamp))),
+      ))),
+  );
+}
+
+function renderIncidentHistory(incidents) {
+  const past = incidents.filter((i) => !i.active).slice(0, 20);
+  $('#incidents-list').replaceChildren(...past.map(renderIncident));
+  $('#incidents-list').hidden = past.length === 0;
+  $('#no-incidents').hidden = past.length > 0;
+  $('#incidents-section').hidden = false;
+}
+
+// ─── Ablauf ────────────────────────────────────
+function render() {
+  $('#loading-state').hidden = true;
+  applySite();
+  renderLastUpdated();
+
+  if (!services().length) {
+    $('#empty-state').hidden = false;
+    return;
   }
+  $('#empty-state').hidden = true;
 
-  return result;
+  const incidents = allIncidents();
+  renderBanner(incidents);
+  renderCards();
+  renderIncidentHistory(incidents);
+
+  $('#charts-section').hidden = false;
+  renderChartControls();
+  updateCharts();
+  moveThumb();
 }
 
-function parseYamlValue(val) {
-  if (!val) return '';
-  if (val.startsWith('"') && val.endsWith('"')) return val.slice(1, -1);
-  if (val.startsWith("'") && val.endsWith("'")) return val.slice(1, -1);
-  if (val === 'true') return true;
-  if (val === 'false') return false;
-  if (/^\d+$/.test(val)) return parseInt(val, 10);
-  if (/^\d+\.\d+$/.test(val)) return parseFloat(val);
-  return val;
+async function refresh() {
+  try {
+    await loadData();
+    render();
+  } catch (err) {
+    console.error('[Minimaid] Fehler beim Laden der Status-Daten:', err);
+    if (!state.history) {
+      $('#loading-state').hidden = true;
+      $('#empty-state').hidden = false;
+      $('#last-updated').textContent = 'Status-Daten konnten nicht geladen werden';
+    }
+  }
 }
+
+setupTooltip();
+setupGlassSheen();
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  // Diagramme mit den Farben des neuen Farbschemas neu aufbauen.
+  for (const key of Object.keys(state.charts)) {
+    state.charts[key]?.destroy();
+    state.charts[key] = null;
+  }
+  if (state.history) updateCharts();
+});
+bindChartControls();
+await refresh();
+
+setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) renderLastUpdated(); });
