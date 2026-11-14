@@ -175,14 +175,17 @@ function fmtAgo(ms) {
 // ─── Theme & Kopfbereich ───────────────────────
 function applySite() {
   const { site = {}, theme = {} } = state.config;
-  const vars = { accent: '--accent', secondary: '--secondary', success: '--success', danger: '--danger', warning: '--warning', background: '--bg' };
+  const vars = { accent: '--accent', secondary: '--secondary', success: '--success', danger: '--danger', warning: '--warning', background: '--bg-dark' };
   for (const [key, cssVar] of Object.entries(vars)) {
     if (/^#[0-9a-f]{3,8}$/i.test(theme[key] ?? '')) document.documentElement.style.setProperty(cssVar, theme[key]);
   }
-  if (theme.background) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.background);
+  if (theme.background) {
+    document.querySelector('meta[name="theme-color"][media*="dark"]')?.setAttribute('content', theme.background);
+  }
 
   if (site.title) {
     $('#site-title').textContent = site.title;
+    $('#brand-name').textContent = site.title;
     document.title = `${site.title} – Status`;
   }
   if (site.description) {
@@ -238,29 +241,49 @@ function renderBanner(incidents) {
   const plural = (n) => (n === 1 ? 'Service' : 'Services');
 
   let tone = 'success';
-  let text = '✓ Alle Systeme sind betriebsbereit';
+  let icon = '✓';
+  let text = 'Alle Systeme sind betriebsbereit';
+  let short = 'Alles in Ordnung';
   if (offline) {
     tone = 'danger';
-    text = `⚠ ${offline} ${plural(offline)} offline`;
+    icon = '!';
+    text = `${offline} ${plural(offline)} offline`;
     if (degraded) text += `, ${degraded} beeinträchtigt`;
+    short = 'Störung';
   } else if (degraded) {
     tone = 'warning';
-    text = `⚡ ${degraded} ${plural(degraded)} beeinträchtigt`;
+    icon = '!';
+    text = `${degraded} ${plural(degraded)} beeinträchtigt`;
+    short = 'Beeinträchtigt';
   } else if (maintenance) {
     tone = 'info';
-    text = '🔧 Geplante Wartungsarbeiten';
+    icon = '🔧';
+    text = 'Geplante Wartungsarbeiten';
+    short = 'Wartung';
   } else if (statuses.length && statuses.every((s) => s === 'unknown')) {
     tone = 'info';
+    icon = 'i';
     text = 'Noch keine Messwerte vorhanden';
+    short = 'Keine Daten';
   }
 
   banner.dataset.tone = tone;
-  banner.textContent = text;
+  banner.querySelector('.banner-icon').textContent = icon;
+  banner.querySelector('.banner-text').textContent = text;
   banner.hidden = false;
+
+  const pill = $('#topbar-status');
+  pill.dataset.tone = tone;
+  pill.querySelector('.status-pill-text').textContent = short;
+  pill.title = text;
 
   const active = incidents.filter((i) => i.active);
   const box = $('#active-incidents');
-  box.replaceChildren(...active.map(renderIncident));
+  box.replaceChildren(...active.map((inc) => {
+    const el = renderIncident(inc);
+    el.classList.add('glass');
+    return el;
+  }));
   box.hidden = active.length === 0;
 }
 
@@ -290,7 +313,7 @@ function renderCards() {
       ? h('a', { href: svc.link, target: '_blank', rel: 'noopener' }, svc.name)
       : svc.name;
 
-    return h('article', { class: 'service-card', 'aria-label': `${svc.name}: ${STATUS_LABEL[status]}` },
+    return h('article', { class: 'service-card glass glass-interactive', 'aria-label': `${svc.name}: ${STATUS_LABEL[status]}` },
       h('div', { class: 'card-head' },
         h('div', { class: 'card-title' },
           h('div', { class: `type-icon ${meta.css}`, 'aria-hidden': 'true' }, meta.icon),
@@ -368,6 +391,18 @@ function setupTooltip() {
   window.addEventListener('scroll', hide, { passive: true });
 }
 
+// ─── Glanzlicht, das dem Zeiger folgt ──────────
+function setupGlassSheen() {
+  if (!window.matchMedia('(hover: hover)').matches) return;
+  document.addEventListener('pointermove', (e) => {
+    const card = e.target.closest?.('.glass-interactive');
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+    card.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+  }, { passive: true });
+}
+
 // ─── Charts ────────────────────────────────────
 const PALETTE = () => {
   const css = getComputedStyle(document.documentElement);
@@ -383,6 +418,16 @@ function withAlpha(color, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/** Verlauf von halbtransparenter Linienfarbe zu durchsichtig – wirkt wie getöntes Glas. */
+function glassFill(chart, color) {
+  const area = chart.chartArea;
+  if (!area) return withAlpha(color, 0.12);
+  const gradient = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+  gradient.addColorStop(0, withAlpha(color, 0.3));
+  gradient.addColorStop(1, withAlpha(color, 0));
+  return gradient;
+}
+
 function renderChartControls() {
   const select = $('#chart-service-select');
   const options = [h('option', { value: '__all__' }, 'Alle Services'),
@@ -392,11 +437,23 @@ function renderChartControls() {
   select.value = state.filter;
 }
 
+/** Schiebt den Glas-Daumen des Segment-Controls unter den aktiven Button. */
+function moveThumb() {
+  const group = $('.segmented');
+  const active = group?.querySelector('[aria-pressed="true"]');
+  if (!active || !active.offsetWidth) return;
+  group.style.setProperty('--thumb-x', `${active.offsetLeft}px`);
+  group.style.setProperty('--thumb-w', `${active.offsetWidth}px`);
+}
+
 function bindChartControls() {
+  new ResizeObserver(moveThumb).observe($('.segmented'));
+
   document.querySelectorAll('.segmented [data-range]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.range = btn.dataset.range;
       document.querySelectorAll('.segmented [data-range]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      moveThumb();
       updateCharts();
     });
   });
@@ -410,7 +467,15 @@ function formatTick(value) {
   return state.range === '24h' ? fmtTime.format(value) : fmtShortDate.format(value);
 }
 
+function chartTheme() {
+  const dark = !window.matchMedia('(prefers-color-scheme: light)').matches;
+  return dark
+    ? { text: 'rgba(235, 235, 245, 0.6)', grid: 'rgba(255, 255, 255, 0.07)', tipBg: 'rgba(28, 28, 36, 0.92)', tipText: '#f5f5f7', tipBorder: 'rgba(255, 255, 255, 0.15)' }
+    : { text: 'rgba(60, 60, 67, 0.7)', grid: 'rgba(0, 0, 0, 0.07)', tipBg: 'rgba(255, 255, 255, 0.95)', tipText: '#1c1c1e', tipBorder: 'rgba(0, 0, 0, 0.08)' };
+}
+
 function baseChartOptions(yOptions) {
+  const t = chartTheme();
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -418,28 +483,29 @@ function baseChartOptions(yOptions) {
     interaction: { mode: 'nearest', axis: 'x', intersect: false },
     spanGaps: true,
     plugins: {
-      legend: { labels: { color: '#9ca3af', font: { size: 11 }, boxWidth: 12 } },
+      legend: { labels: { color: t.text, font: { size: 11, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8 } },
       tooltip: {
-        backgroundColor: '#111128',
-        borderColor: 'rgba(255, 45, 149, 0.3)',
+        backgroundColor: t.tipBg,
+        borderColor: t.tipBorder,
         borderWidth: 1,
-        titleColor: '#fff',
-        bodyColor: '#ccc',
+        titleColor: t.tipText,
+        bodyColor: t.tipText,
         padding: 10,
-        cornerRadius: 8,
+        cornerRadius: 12,
+        usePointStyle: true,
         callbacks: { title: (items) => (items[0] ? fmtDateTime.format(items[0].parsed.x) : '') },
       },
     },
     scales: {
       x: {
         type: 'linear',
-        grid: { color: 'rgba(26, 26, 62, 0.5)' },
-        ticks: { color: '#6b7280', font: { size: 10 }, maxRotation: 0, autoSkipPadding: 16, callback: formatTick },
+        grid: { color: t.grid }, border: { display: false },
+        ticks: { color: t.text, font: { size: 10 }, maxRotation: 0, autoSkipPadding: 16, callback: formatTick },
       },
       y: {
-        grid: { color: 'rgba(26, 26, 62, 0.5)' },
-        ticks: { color: '#6b7280', font: { size: 10 } },
+        grid: { color: t.grid }, border: { display: false },
         ...yOptions,
+        ticks: { color: t.text, font: { size: 10 }, maxTicksLimit: 6, ...yOptions.ticks },
       },
     },
   };
@@ -463,20 +529,24 @@ function updateCharts() {
     const buckets = bucketize(checksOf(svc.id), start, end, count);
     if (!buckets.some((b) => b.total)) return;
     const color = palette[i % palette.length];
-    const line = { label: svc.name, borderColor: color, borderWidth: 2, tension: 0.3, pointRadius: 0, pointHitRadius: 8, fill: true };
+    const line = {
+      label: svc.name, borderColor: color, borderWidth: 2.5, tension: 0.35, fill: true,
+      pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 10, pointBackgroundColor: color,
+      backgroundColor: (ctx) => glassFill(ctx.chart, color),
+    };
     const mid = (b) => (b.start + b.end) / 2;
-    uptimeSets.push({ ...line, backgroundColor: withAlpha(color, 0.1),
+    uptimeSets.push({ ...line,
       data: buckets.filter((b) => b.total).map((b) => ({ x: mid(b), y: +((b.online / b.total) * 100).toFixed(2) })) });
-    responseSets.push({ ...line, backgroundColor: withAlpha(color, 0.08),
+    responseSets.push({ ...line,
       data: buckets.filter((b) => b.rtCount).map((b) => ({ x: mid(b), y: Math.round(b.rtSum / b.rtCount) })) });
   });
 
   const showLegend = uptimeSets.length > 1;
   upsertChart('uptime', '#uptime-chart', uptimeSets, start, end, showLegend,
-    { min: 0, max: 100, ticks: { color: '#6b7280', font: { size: 10 }, callback: (v) => `${v}%` } },
+    { min: 0, max: 100, ticks: { callback: (v) => `${v}%` } },
     (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%`);
   upsertChart('response', '#response-chart', responseSets, start, end, showLegend,
-    { beginAtZero: true, ticks: { color: '#6b7280', font: { size: 10 }, callback: (v) => `${v} ms` } },
+    { beginAtZero: true, ticks: { callback: (v) => `${v} ms` } },
     (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} ms`);
 }
 
@@ -568,6 +638,7 @@ function render() {
   $('#charts-section').hidden = false;
   renderChartControls();
   updateCharts();
+  moveThumb();
 }
 
 async function refresh() {
@@ -585,6 +656,15 @@ async function refresh() {
 }
 
 setupTooltip();
+setupGlassSheen();
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  // Diagramme mit den Farben des neuen Farbschemas neu aufbauen.
+  for (const key of Object.keys(state.charts)) {
+    state.charts[key]?.destroy();
+    state.charts[key] = null;
+  }
+  if (state.history) updateCharts();
+});
 bindChartControls();
 await refresh();
 

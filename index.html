@@ -2,70 +2,93 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Minimaid – Status</title>
   <meta name="description" content="Serverless Status Monitor" />
-  <meta name="color-scheme" content="dark" />
-  <meta name="theme-color" content="#07070e" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23ff2d95'/%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='%23ff2d95' stroke-opacity='.4' stroke-width='2'/%3E%3C/svg%3E" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#07070e" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#eef0f8" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff2d95'/%3E%3Cstop offset='1' stop-color='%2300d4ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='2' y='2' width='28' height='28' rx='9' fill='url(%23g)'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23fff' fill-opacity='.9'/%3E%3C/svg%3E" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" />
   <link rel="stylesheet" href="css/style.css" />
 
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#services">Zum Inhalt springen</a>
+  <a class="skip-link" href="#main">Zum Inhalt springen</a>
 
-  <header class="hero">
-    <div class="container">
-      <h1 class="neon-title" id="site-title">Minimaid</h1>
-      <p class="hero-sub" id="site-description">Serverless Status Monitor</p>
-      <p class="hero-meta" aria-live="polite">
-        <span id="last-updated">Lade Status-Daten …</span>
-        <span id="stale-warning" class="stale" hidden></span>
-      </p>
-    </div>
+  <!-- Farbiger, langsam treibender Hintergrund – erst er macht das Glas sichtbar -->
+  <div class="backdrop" aria-hidden="true">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+  </div>
+
+  <nav class="topbar glass" aria-label="Kopfzeile">
+    <a class="brand" href="#top">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name" id="brand-name">Minimaid</span>
+    </a>
+    <span id="topbar-status" class="status-pill" data-tone="info">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span class="status-pill-text">Lade …</span>
+    </span>
+  </nav>
+
+  <header class="hero container" id="top">
+    <h1 class="hero-title" id="site-title">Minimaid</h1>
+    <p class="hero-sub" id="site-description">Serverless Status Monitor</p>
+    <p class="hero-meta" aria-live="polite">
+      <span id="last-updated" class="chip">Lade Status-Daten …</span>
+      <span id="stale-warning" class="chip chip-warn" hidden></span>
+    </p>
   </header>
 
-  <main class="container" id="services">
+  <main class="container" id="main">
     <section aria-label="Gesamtstatus">
-      <div id="overall-status" class="banner" role="status" hidden></div>
-      <div id="active-incidents" class="active-incidents" hidden></div>
+      <div id="overall-status" class="banner glass" role="status" hidden>
+        <span class="banner-icon" aria-hidden="true"></span>
+        <span class="banner-text"></span>
+      </div>
+      <div id="active-incidents" class="incident-list active-incidents" hidden></div>
     </section>
 
     <section aria-labelledby="services-heading" class="section">
-      <h2 id="services-heading" class="visually-hidden">Services</h2>
+      <h2 id="services-heading" class="section-title">Services</h2>
       <div id="services-grid" class="grid"></div>
 
-      <div id="loading-state" class="placeholder">
+      <div id="loading-state" class="placeholder glass">
         <div class="spinner" aria-hidden="true"></div>
         <p>Lade Status-Daten …</p>
       </div>
 
-      <div id="empty-state" class="placeholder" hidden>
+      <div id="empty-state" class="placeholder glass" hidden>
         <div class="placeholder-icon" aria-hidden="true">🧹</div>
         <p>Noch keine Status-Daten vorhanden.</p>
         <p class="muted">Der Minimaid-Worker muss zuerst einmal laufen (<code>npm run check</code>).</p>
       </div>
     </section>
 
-    <section id="charts-section" class="panel section" aria-labelledby="charts-heading" hidden>
+    <section id="charts-section" class="panel glass section" aria-labelledby="charts-heading" hidden>
       <div class="panel-head">
-        <h2 id="charts-heading"><span class="accent-blue" aria-hidden="true">⬡</span> Uptime &amp; Antwortzeiten</h2>
+        <h2 id="charts-heading">Uptime &amp; Antwortzeiten</h2>
         <div class="controls">
           <label class="visually-hidden" for="chart-service-select">Service</label>
-          <select id="chart-service-select" class="select">
-            <option value="__all__">Alle Services</option>
-          </select>
+          <div class="select-wrap">
+            <select id="chart-service-select" class="select">
+              <option value="__all__">Alle Services</option>
+            </select>
+          </div>
           <div class="segmented" role="group" aria-label="Zeitraum">
+            <span class="segmented-thumb" aria-hidden="true"></span>
             <button type="button" data-range="24h" aria-pressed="true">24h</button>
-            <button type="button" data-range="7d" aria-pressed="false">7 Tage</button>
-            <button type="button" data-range="30d" aria-pressed="false">30 Tage</button>
-            <button type="button" data-range="90d" aria-pressed="false">90 Tage</button>
+            <button type="button" data-range="7d" aria-pressed="false">7 T</button>
+            <button type="button" data-range="30d" aria-pressed="false">30 T</button>
+            <button type="button" data-range="90d" aria-pressed="false">90 T</button>
           </div>
         </div>
       </div>
@@ -76,25 +99,26 @@
           <div class="chart-box"><canvas id="uptime-chart" role="img" aria-label="Uptime-Verlauf in Prozent"></canvas></div>
         </figure>
         <figure class="chart-card">
-          <figcaption>Antwortzeiten (ms)</figcaption>
+          <figcaption>Antwortzeiten</figcaption>
           <div class="chart-box"><canvas id="response-chart" role="img" aria-label="Durchschnittliche Antwortzeit in Millisekunden"></canvas></div>
         </figure>
       </div>
       <p id="chart-fallback" class="muted" hidden>Diagramme konnten nicht geladen werden.</p>
     </section>
 
-    <section id="incidents-section" class="panel section" aria-labelledby="incidents-heading" hidden>
-      <h2 id="incidents-heading"><span class="accent-yellow" aria-hidden="true">⚡</span> Vorfälle &amp; Updates</h2>
+    <section id="incidents-section" class="panel glass section" aria-labelledby="incidents-heading" hidden>
+      <div class="panel-head">
+        <h2 id="incidents-heading">Vorfälle &amp; Updates</h2>
+      </div>
       <div id="incidents-list" class="incident-list"></div>
-      <p id="no-incidents" class="placeholder muted" hidden>Keine Vorfälle – alles läuft reibungslos! ✨</p>
+      <p id="no-incidents" class="empty-note" hidden>Keine Vorfälle – alles läuft reibungslos ✨</p>
     </section>
   </main>
 
-  <footer class="footer">
-    <p>Powered by <span class="accent-pink">Minimaid</span> – Serverless Status Monitor</p>
-    <p>Checks laufen via GitHub Actions · Gehostet auf GitHub Pages</p>
+  <footer class="footer container">
+    <p>Powered by <strong>Minimaid</strong> · Checks via GitHub Actions · Gehostet auf GitHub Pages</p>
   </footer>
 
-  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <div id="tooltip" class="tooltip glass" role="tooltip" hidden></div>
 </body>
 </html>
