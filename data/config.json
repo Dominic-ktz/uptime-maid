@@ -1,0 +1,27 @@
+{
+  "site": {
+    "title": "Kisara Services",
+    "description": "Serverless Status Monitor by Kisara Group",
+    "url": "https://dominic-ktz.github.io/uptime-maid"
+  },
+  "theme": {
+    "accent": "#ff2d95",
+    "secondary": "#00d4ff",
+    "success": "#39ff14",
+    "danger": "#ff073a",
+    "warning": "#ffbe0b",
+    "background": "#07070e"
+  },
+  "services": [
+    {
+      "id": "main-website",
+      "name": "Kisara-de",
+      "type": "http"
+    },
+    {
+      "id": "random-gif-api",
+      "name": "Random GIF API",
+      "type": "http"
+    }
+  ]
+}
