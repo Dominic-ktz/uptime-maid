@@ -1,22 +1,8 @@
 {
-  "lastUpdated": "2026-11-18T10:22:22.825Z",
+  "lastUpdated": "2026-11-18T18:55:01.499Z",
   "services": {
     "main-website": {
       "checks": [
-        {"timestamp":"2026-08-20T10:48:45.816Z","status":"online","responseTime":617,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T11:11:59.313Z","status":"online","responseTime":337,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T11:42:45.361Z","status":"online","responseTime":499,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T12:02:03.899Z","status":"online","responseTime":359,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T13:04:29.146Z","status":"online","responseTime":388,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T13:54:32.855Z","status":"online","responseTime":472,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T14:28:54.634Z","status":"online","responseTime":510,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T15:05:53.614Z","status":"online","responseTime":581,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T15:45:30.596Z","status":"online","responseTime":543,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T16:14:00.122Z","status":"online","responseTime":337,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T16:52:02.995Z","status":"online","responseTime":482,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T17:16:39.759Z","status":"online","responseTime":546,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T17:48:47.764Z","status":"online","responseTime":454,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T18:15:58.667Z","status":"online","responseTime":418,"details":{"statusCode":200}},
         {"timestamp":"2026-08-20T19:02:54.514Z","status":"online","responseTime":575,"details":{"statusCode":200}},
         {"timestamp":"2026-08-20T19:38:18.095Z","status":"online","responseTime":405,"details":{"statusCode":200}},
         {"timestamp":"2026-08-20T20:00:01.164Z","status":"online","responseTime":472,"details":{"statusCode":200}},
@@ -733,25 +719,12 @@
         {"timestamp":"2026-11-17T11:48:55.427Z","status":"online","responseTime":570,"details":{"statusCode":200}},
         {"timestamp":"2026-11-17T20:04:20.824Z","status":"online","responseTime":501,"details":{"statusCode":200}},
         {"timestamp":"2026-11-18T02:21:14.224Z","status":"online","responseTime":424,"details":{"statusCode":200}},
-        {"timestamp":"2026-11-18T10:22:22.825Z","status":"online","responseTime":397,"details":{"statusCode":200}}
+        {"timestamp":"2026-11-18T10:22:22.825Z","status":"online","responseTime":397,"details":{"statusCode":200}},
+        {"timestamp":"2026-11-18T18:55:01.499Z","status":"online","responseTime":413,"details":{"statusCode":200}}
       ]
     },
     "random-gif-api": {
       "checks": [
-        {"timestamp":"2026-08-20T10:48:45.816Z","status":"online","responseTime":455,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T11:11:59.313Z","status":"online","responseTime":406,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T11:42:45.361Z","status":"online","responseTime":541,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T12:02:03.899Z","status":"online","responseTime":313,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T13:04:29.146Z","status":"online","responseTime":332,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T13:54:32.855Z","status":"online","responseTime":467,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T14:28:54.634Z","status":"online","responseTime":454,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T15:05:53.614Z","status":"online","responseTime":451,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T15:45:30.596Z","status":"online","responseTime":458,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T16:14:00.122Z","status":"online","responseTime":380,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T16:52:02.995Z","status":"online","responseTime":339,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T17:16:39.759Z","status":"online","responseTime":602,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T17:48:47.764Z","status":"online","responseTime":337,"details":{"statusCode":200}},
-        {"timestamp":"2026-08-20T18:15:58.667Z","status":"online","responseTime":313,"details":{"statusCode":200}},
         {"timestamp":"2026-08-20T19:02:54.514Z","status":"online","responseTime":516,"details":{"statusCode":200}},
         {"timestamp":"2026-08-20T19:38:18.095Z","status":"online","responseTime":299,"details":{"statusCode":200}},
         {"timestamp":"2026-08-20T20:00:01.164Z","status":"online","responseTime":405,"details":{"statusCode":200}},
@@ -1468,7 +1441,8 @@
         {"timestamp":"2026-11-17T11:48:55.427Z","status":"online","responseTime":556,"details":{"statusCode":200}},
         {"timestamp":"2026-11-17T20:04:20.824Z","status":"online","responseTime":530,"details":{"statusCode":200}},
         {"timestamp":"2026-11-18T02:21:14.224Z","status":"online","responseTime":410,"details":{"statusCode":200}},
-        {"timestamp":"2026-11-18T10:22:22.825Z","status":"online","responseTime":392,"details":{"statusCode":200}}
+        {"timestamp":"2026-11-18T10:22:22.825Z","status":"online","responseTime":392,"details":{"statusCode":200}},
+        {"timestamp":"2026-11-18T18:55:01.499Z","status":"online","responseTime":400,"details":{"statusCode":200}}
       ]
     }
   },
